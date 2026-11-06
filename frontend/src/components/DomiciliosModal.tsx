@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Persona, Domicilio } from '../types';
+import { ConfirmModal } from './ConfirmModal';
 import { api } from '../services/api';
 
 interface Props {
@@ -19,6 +20,8 @@ export const DomiciliosModal: React.FC<Props> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [deleteDomicilioId, setDeleteDomicilioId] = useState<number | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const [form, setForm] = useState<Domicilio>({
     calle: '',
@@ -80,15 +83,24 @@ export const DomiciliosModal: React.FC<Props> = ({
     });
   };
 
-  const handleDelete = async (id?: number) => {
-    if (!id || !confirm('¿Estás seguro de eliminar este domicilio?')) return;
-    try {
-      await api.deleteDomicilio(id);
+  const handleRequestDelete = (id?: number) => {
+      if (!id) return;
+      setDeleteDomicilioId(id);
+      setIsConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+  if (!deleteDomicilioId) return;
+  try {
+      await api.deleteDomicilio(deleteDomicilioId);
+      setIsConfirmOpen(false);
+      setDeleteDomicilioId(null);
       await loadDomicilios();
       onDomicilioChanged();
-    } catch (err: any) {
-      alert(err.message || 'Error al eliminar domicilio');
-    }
+  } catch (err: any) {
+      setErrorMsg(err.message || 'Error al eliminar domicilio');
+      setIsConfirmOpen(false);
+  }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -189,7 +201,7 @@ export const DomiciliosModal: React.FC<Props> = ({
                         Editar
                       </button>
                       <button
-                        onClick={() => handleDelete(d.id)}
+                        onClick={() => handleRequestDelete(d.id)}
                         className="px-2 py-0.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition font-medium"
                       >
                         Eliminar
@@ -363,6 +375,16 @@ export const DomiciliosModal: React.FC<Props> = ({
           </button>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        title="Eliminar Domicilio"
+        message="¿Estás seguro de que deseas eliminar este domicilio? Esta acción no se puede deshacer."
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setIsConfirmOpen(false);
+          setDeleteDomicilioId(null);
+        }}
+      />
     </div>
   );
 };

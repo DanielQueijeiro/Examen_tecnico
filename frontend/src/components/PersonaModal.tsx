@@ -21,6 +21,7 @@ export const PersonaModal: React.FC<Props> = ({ isOpen, persona, onClose, onSave
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -42,53 +43,99 @@ export const PersonaModal: React.FC<Props> = ({ isOpen, persona, onClose, onSave
       });
     }
     setErrors({});
+    setTouched({});
   }, [persona, isOpen]);
 
   if (!isOpen) return null;
 
-  const validate = (): boolean => {
-    const errs: Record<string, string> = {};
-
-    if (!formData.nombre.trim()) errs.nombre = 'El nombre es requerido';
-    if (!formData.apellidoPaterno.trim()) errs.apellidoPaterno = 'El apellido paterno es requerido';
-
-    const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/i;
-    if (!formData.curp.trim()) {
-      errs.curp = 'La CURP es requerida';
-    } else if (!curpRegex.test(formData.curp.trim())) {
-      errs.curp = 'Formato inválido (18 caracteres)';
+  // Validación granular de cada campo en tiempo real
+  const validateField = (name: string, value: string): string => {
+    switch (name) {
+      case 'nombre':
+        return !value.trim() ? 'El nombre es obligatorio' : '';
+      case 'apellidoPaterno':
+        return !value.trim() ? 'El apellido paterno es obligatorio' : '';
+      case 'curp': {
+        const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/i;
+        if (!value.trim()) return 'La CURP es obligatoria';
+        if (!curpRegex.test(value.trim())) return 'Formato de CURP inválido (18 caracteres)';
+        return '';
+      }
+      case 'rfc': {
+        const rfcRegex = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/i;
+        if (!value.trim()) return 'El RFC es obligatorio';
+        if (!rfcRegex.test(value.trim())) return 'Formato de RFC inválido (12-13 caracteres)';
+        return '';
+      }
+      case 'fechaNacimiento':
+        return !value ? 'La fecha de nacimiento es obligatoria' : '';
+      case 'email': {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!value.trim()) return 'El correo electrónico es obligatorio';
+        if (!emailRegex.test(value.trim())) return 'Formato de correo no válido';
+        return '';
+      }
+      case 'telefono': {
+        const telRegex = /^\d{10}$/;
+        if (!value.trim()) return 'El teléfono es obligatorio';
+        if (!telRegex.test(value.trim())) return 'Debe contener exactamente 10 dígitos';
+        return '';
+      }
+      default:
+        return '';
     }
+  };
 
-    const rfcRegex = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/i;
-    if (!formData.rfc.trim()) {
-      errs.rfc = 'El RFC es requerido';
-    } else if (!rfcRegex.test(formData.rfc.trim())) {
-      errs.rfc = 'Formato inválido (12-13 caracteres)';
+  const handleInputChange = (field: keyof Persona, value: string) => {
+    let processedValue = value;
+    if (field === 'curp' || field === 'rfc') processedValue = value.toUpperCase();
+    if (field === 'telefono') processedValue = value.replace(/\D/g, '');
+
+    const newFormData = { ...formData, [field]: processedValue };
+    setFormData(newFormData);
+
+    // Si el campo ya fue tocado, validar en tiempo real
+    if (touched[field]) {
+      const error = validateField(field, processedValue);
+      setErrors((prev) => ({ ...prev, [field]: error }));
     }
+  };
 
-    if (!formData.fechaNacimiento) errs.fechaNacimiento = 'Fecha requerida';
+  const handleBlur = (field: string, value: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const error = validateField(field, value);
+    setErrors((prev) => ({ ...prev, [field]: error }));
+  };
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.email.trim()) {
-      errs.email = 'El correo es requerido';
-    } else if (!emailRegex.test(formData.email.trim())) {
-      errs.email = 'Formato de correo no válido';
-    }
+  const validateAll = (): boolean => {
+    const errs: Record<string, string> = {
+      nombre: validateField('nombre', formData.nombre),
+      apellidoPaterno: validateField('apellidoPaterno', formData.apellidoPaterno),
+      curp: validateField('curp', formData.curp),
+      rfc: validateField('rfc', formData.rfc),
+      fechaNacimiento: validateField('fechaNacimiento', formData.fechaNacimiento),
+      email: validateField('email', formData.email),
+      telefono: validateField('telefono', formData.telefono),
+    };
 
-    const telRegex = /^\d{10}$/;
-    if (!formData.telefono.trim()) {
-      errs.telefono = 'Teléfono requerido';
-    } else if (!telRegex.test(formData.telefono.trim())) {
-      errs.telefono = 'Debe contener 10 dígitos';
-    }
+    setTouched({
+      nombre: true,
+      apellidoPaterno: true,
+      curp: true,
+      rfc: true,
+      fechaNacimiento: true,
+      email: true,
+      telefono: true,
+    });
 
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
+    const filteredErrors = Object.fromEntries(Object.entries(errs).filter(([_, v]) => v !== ''));
+    setErrors(filteredErrors);
+    return Object.keys(filteredErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validateAll()) return;
 
     try {
       setLoading(true);
@@ -100,7 +147,7 @@ export const PersonaModal: React.FC<Props> = ({ isOpen, persona, onClose, onSave
       });
       onClose();
     } catch {
-      // Manejado en el toast global
+      // Manejado por toast en App.tsx
     } finally {
       setLoading(false);
     }
@@ -133,8 +180,13 @@ export const PersonaModal: React.FC<Props> = ({ isOpen, persona, onClose, onSave
               <input
                 type="text"
                 value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                onChange={(e) => handleInputChange('nombre', e.target.value)}
+                onBlur={() => handleBlur('nombre', formData.nombre)}
+                className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+                  errors.nombre
+                    ? 'border-rose-500 focus:ring-rose-500/20'
+                    : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
                 placeholder="Juan Carlos"
               />
               {errors.nombre && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">{errors.nombre}</p>}
@@ -147,8 +199,13 @@ export const PersonaModal: React.FC<Props> = ({ isOpen, persona, onClose, onSave
               <input
                 type="text"
                 value={formData.apellidoPaterno}
-                onChange={(e) => setFormData({ ...formData, apellidoPaterno: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                onChange={(e) => handleInputChange('apellidoPaterno', e.target.value)}
+                onBlur={() => handleBlur('apellidoPaterno', formData.apellidoPaterno)}
+                className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+                  errors.apellidoPaterno
+                    ? 'border-rose-500 focus:ring-rose-500/20'
+                    : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
                 placeholder="González"
               />
               {errors.apellidoPaterno && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">{errors.apellidoPaterno}</p>}
@@ -161,7 +218,7 @@ export const PersonaModal: React.FC<Props> = ({ isOpen, persona, onClose, onSave
               <input
                 type="text"
                 value={formData.apellidoMaterno}
-                onChange={(e) => setFormData({ ...formData, apellidoMaterno: e.target.value })}
+                onChange={(e) => handleInputChange('apellidoMaterno', e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 placeholder="López"
               />
@@ -174,8 +231,13 @@ export const PersonaModal: React.FC<Props> = ({ isOpen, persona, onClose, onSave
               <input
                 type="date"
                 value={formData.fechaNacimiento}
-                onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                onChange={(e) => handleInputChange('fechaNacimiento', e.target.value)}
+                onBlur={() => handleBlur('fechaNacimiento', formData.fechaNacimiento)}
+                className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+                  errors.fechaNacimiento
+                    ? 'border-rose-500 focus:ring-rose-500/20'
+                    : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
               {errors.fechaNacimiento && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">{errors.fechaNacimiento}</p>}
             </div>
@@ -188,8 +250,13 @@ export const PersonaModal: React.FC<Props> = ({ isOpen, persona, onClose, onSave
                 type="text"
                 maxLength={18}
                 value={formData.curp}
-                onChange={(e) => setFormData({ ...formData, curp: e.target.value.toUpperCase() })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-mono uppercase text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                onChange={(e) => handleInputChange('curp', e.target.value)}
+                onBlur={() => handleBlur('curp', formData.curp)}
+                className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border rounded-lg text-sm font-mono uppercase text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+                  errors.curp
+                    ? 'border-rose-500 focus:ring-rose-500/20'
+                    : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
                 placeholder="ABCD900101HDFRRN01"
               />
               {errors.curp && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">{errors.curp}</p>}
@@ -203,8 +270,13 @@ export const PersonaModal: React.FC<Props> = ({ isOpen, persona, onClose, onSave
                 type="text"
                 maxLength={13}
                 value={formData.rfc}
-                onChange={(e) => setFormData({ ...formData, rfc: e.target.value.toUpperCase() })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-mono uppercase text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                onChange={(e) => handleInputChange('rfc', e.target.value)}
+                onBlur={() => handleBlur('rfc', formData.rfc)}
+                className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border rounded-lg text-sm font-mono uppercase text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+                  errors.rfc
+                    ? 'border-rose-500 focus:ring-rose-500/20'
+                    : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
                 placeholder="ABCD900101XX1"
               />
               {errors.rfc && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">{errors.rfc}</p>}
@@ -217,8 +289,13 @@ export const PersonaModal: React.FC<Props> = ({ isOpen, persona, onClose, onSave
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                onBlur={() => handleBlur('email', formData.email)}
+                className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+                  errors.email
+                    ? 'border-rose-500 focus:ring-rose-500/20'
+                    : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
                 placeholder="usuario@ejemplo.com"
               />
               {errors.email && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">{errors.email}</p>}
@@ -232,8 +309,13 @@ export const PersonaModal: React.FC<Props> = ({ isOpen, persona, onClose, onSave
                 type="text"
                 maxLength={10}
                 value={formData.telefono}
-                onChange={(e) => setFormData({ ...formData, telefono: e.target.value.replace(/\D/g, '') })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                onChange={(e) => handleInputChange('telefono', e.target.value)}
+                onBlur={() => handleBlur('telefono', formData.telefono)}
+                className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border rounded-lg text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+                  errors.telefono
+                    ? 'border-rose-500 focus:ring-rose-500/20'
+                    : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
                 placeholder="4421234567"
               />
               {errors.telefono && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">{errors.telefono}</p>}

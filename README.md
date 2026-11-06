@@ -4,7 +4,7 @@
 
 ### 1. Clonar el repositorio
 ```bash
-git clone
+git clone https://github.com/DanielQueijeiro/Examen_tecnico.git
 cd vemasmas
 ```
 
@@ -57,6 +57,13 @@ cd backend
 mvn test
 ```
 
+Para ejecutar la suite de pruebas unitarias del frontend:
+
+```bash
+cd ../frontend
+npm test
+```
+
 ---
 
 ## Capturas de Pantalla
@@ -66,10 +73,10 @@ mvn test
 | **Inicio de Sesión** | ![Login](docs/screenshots/01-login.png) |
 | **Dashboard** | ![Dashboard](docs/screenshots/02-dashboard.png) |
 | **Modo Oscuro** | ![Dark Mode](docs/screenshots/03-dark-mode.png) |
-| **Alta de Persona** | ![Formulario Persona](docs\screenshots\04-modal-persona.png) |
-| **Edición de Persona** | ![Formulario Persona](docs\screenshots\05-editar-persona.png) |
-| **Administración de Domicilios** | ![Gestión Domicilios](docs\screenshots\06-domicilio.png) |
-| **Detalle de Persona** | ![Detalle](docs\screenshots\07-detalles.png) |
-| **Documentación Swagger UI** | ![Swagger UI](docs\screenshots\08-swagger.png) |
+| **Alta de Persona** | ![Formulario Persona](docs/screenshots/04-modal-persona.png) |
+| **Edición de Persona** | ![Formulario Persona](docs/screenshots/05-editar-persona.png) |
+| **Administración de Domicilios** | ![Gestión Domicilios](docs/screenshots/06-domicilio.png) |
+| **Detalle de Persona** | ![Detalle](docs/screenshots/07-detalles.png) |
+| **Documentación Swagger UI** | ![Swagger UI](docs/screenshots/08-swagger.png) |
 
 ---
