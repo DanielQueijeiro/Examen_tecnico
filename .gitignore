@@ -1,0 +1,24 @@
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+.mvn/timing.properties
+
+# Node / React
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Variables de entorno y logs
+.env
+.env.*
+*.log
+
+# IDEs y Sistema Operativo
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

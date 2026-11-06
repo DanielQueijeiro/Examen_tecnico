@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vemasmas_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: personas_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/02-data.sql:/docker-entrypoint-initdb.d/02-data.sql
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
